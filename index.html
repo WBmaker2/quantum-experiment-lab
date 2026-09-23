@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>양자 실험 설계실 — 개별 검출과 누적 분포</title>
+<meta name="description" content="한 번에는 점 하나, 반복하면 간섭무늬가 나타나는 이유를 검출 사건과 확률분포로 구분해 탐구하는 25분 실험실.">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">본문으로 건너뛰기</a>
+<header class="site-header">
+  <div class="header-inner">
+    <p class="brand"><span class="brand-mark" aria-hidden="true"></span>양자 실험 설계실 <span class="brand-sub">quantum-experiment-lab · P0</span></p>
+    <nav aria-label="실험 단계">
+      <ul class="step-nav">
+        <li><a href="#mission">예측</a></li>
+        <li><a href="#experiment">장치·누적</a></li>
+        <li><a href="#compare">조건 비교</a></li>
+        <li><a href="#record">기록</a></li>
+      </ul>
+    </nav>
+    <button type="button" id="updateLogBtnHeader" class="btn btn-ghost btn-sm">업데이트 내역</button>
+  </div>
+</header>
+
+<main id="main" class="page">
+  <section class="hero card" aria-labelledby="heroTitle">
+    <p class="folio">고등학교 심화 물리·수학 · 25분 활동 · 설계 검증용 예시값</p>
+    <h1 id="heroTitle">한 번에는 점 하나인데,<br>반복하면 왜 간섭무늬가 나타날까?</h1>
+    <p class="lede">개별 검출 사건(점 하나)과 누적 확률분포(무늬 전체)를 구분합니다. 슬릿에서 검출면까지의 궤적은 그리지 않습니다.</p>
+    <div class="hero-actions">
+      <button type="button" id="startBtn" class="btn btn-primary gi-pulse">실험 시작하기</button>
+      <a class="btn btn-ghost" href="#mission">예측부터 보기</a>
+    </div>
+    <dl class="hero-facts">
+      <div><dt>모형</dt><dd>1차원 두 경로 진폭 모형(교육용, 슈뢰딩거 수치해석 아님)</dd></div>
+      <div><dt>검출면</dt><dd>x ∈ [−10, 10] · 512칸</dd></div>
+      <div><dt>시행 수</dt><dd>1 · 100 · 1,000 · 10,000</dd></div>
+    </dl>
+  </section>
+
+  <section id="mission" class="card" aria-labelledby="missionTitle">
+    <p class="folio">01 · 예측 (3분)</p>
+    <h2 id="missionTitle">두 슬릿을 각각 열었을 때를 보고, 둘 다 열었을 때를 예상해 보세요</h2>
+    <div class="two-col">
+      <div>
+        <p>아래는 현재 조건(<span id="missionCond">간섭 유지 · κ=2.0 · φ=0</span>)에서 계산된 이론 분포의 모양 설명입니다. 그래프 수치는 다음 단계에서 직접 실행해 확인합니다.</p>
+        <ul class="check-list">
+          <li><strong>한 슬릿</strong>: 가운데가 높은 하나의 봉우리. 위상 φ와 무관합니다.</li>
+            <li><strong>간섭 소실(두 슬릿 + 경로 정보)</strong>: 무늬 없는 하나의 봉우리 (두 경로 확률의 합). φ를 바꿔도 모양이 그대로입니다. P0 모형에서는 한 슬릿과 모양이 같게 나오며, 둘의 차이는 통과율에 있는데 P0에서 비교하지 않습니다.</li>
+          <li><strong>간섭 유지</strong>: 진폭의 합. φ=0이면 가운데 최대, φ=π이면 가운데 최소입니다.</li>
+        </ul>
+        <p class="note">주의: ‘사람이 쳐다봐서 바뀐다’가 아니라, 환경과의 물리적 상호작용을 단순화한 모형(경로 정보 조건)의 차이입니다.</p>
+      </div>
+      <form id="predictForm" class="predict-form">
+        <fieldset>
+          <legend>둘 다 열었을 때(간섭 유지) 어떤 분포가 나타날까요?</legend>
+          <label class="radio"><input type="radio" name="prediction" value="center-max" required> 가운데가 높은 간섭무늬</label>
+          <label class="radio"><input type="radio" name="prediction" value="center-min"> 가운데가 낮은 간섭무늬</label>
+          <label class="radio"><input type="radio" name="prediction" value="two-bumps"> 간섭 없이 두 봉우리의 합</label>
+          <label class="radio"><input type="radio" name="prediction" value="unsure"> 잘 모르겠다</label>
+        </fieldset>
+        <div class="field">
+          <label for="predictReason">예상 근거 (한 줄, 선택)</label>
+          <input id="predictReason" name="reason" type="text" maxlength="120" placeholder="예: 진폭을 먼저 합하기 때문">
+        </div>
+        <button type="submit" class="btn btn-secondary">예측 저장</button>
+        <p id="predictSaved" class="status" role="status"></p>
+      </form>
+    </div>
+  </section>
+
+  <section id="experiment" class="card" aria-labelledby="expTitle">
+    <p class="folio">02 · 장치 · 03 · 누적 (5분 + 5분 + 7분)</p>
+    <h2 id="expTitle">장치 조건을 정하고 검출을 누적하세요</h2>
+    <p class="note">조건을 바꾸면 이전 점과 섞지 않고 새 실행으로 분리합니다. 기존 실행의 조건·seed·N은 항상 함께 표시됩니다. 장치 그림은 모식이며 실측 축척이 아닙니다.</p>
+    <div class="exp-grid">
+      <form id="controlForm" class="controls" aria-describedby="controlHelp">
+        <p id="controlHelp" class="visually-hidden">모든 입력에는 유효 범위와 단위가 표시됩니다. 범위를 벗어나면 실행되지 않고 오류가 안내됩니다.</p>
+        <fieldset>
+          <legend>슬릿 조건</legend>
+          <div class="field">
+            <label for="modeSel">모드</label>
+            <select id="modeSel" name="mode">
+              <option value="interference">간섭 유지 (진폭의 합)</option>
+              <option value="no-interference">간섭 소실 (확률의 합)</option>
+              <option value="single">한 슬릿 (|ψ1|²)</option>
+            </select>
+            <p class="hint">P0는 0/1만 제공합니다. 부분 간섭(γ)은 P1 범위입니다.</p>
+          </div>
+          <div class="field">
+            <label for="kappaNum">κ (상대 공간 진동수, rad/모형길이)</label>
+            <div class="inline-inputs">
+              <input id="kappaNum" type="number" min="0.5" max="4" step="any" value="2.0" inputmode="decimal" aria-describedby="kappaHint">
+              <input id="kappaRange" type="range" min="0.5" max="4" step="0.1" value="2.0" aria-label="κ 슬라이더">
+            </div>
+            <p class="hint" id="kappaHint">유효 범위 0.5–4. 실제 슬릿 폭·파장·거리로 직접 표기하지 않습니다.</p>
+          </div>
+          <div class="field">
+            <label for="phaseNum">φ (상대 위상, rad)</label>
+            <div class="inline-inputs">
+              <input id="phaseNum" type="number" min="-3.1416" max="3.1416" step="any" value="0" inputmode="decimal" aria-describedby="phaseHint">
+              <input id="phaseRange" type="range" min="-3.14" max="3.14" step="0.01" value="0" aria-label="위상 슬라이더">
+            </div>
+            <p class="hint" id="phaseHint">유효 범위 −π–π (−3.1416–3.1416).</p>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="nSel">시행 수 N</label>
+              <select id="nSel" name="n">
+                <option value="1">1</option>
+                <option value="100" selected>100</option>
+                <option value="1000">1000</option>
+                <option value="10000">10000</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="seedNum">seed (재현용 정수)</label>
+              <input id="seedNum" type="number" min="1" max="99999999" step="1" value="20260915" inputmode="numeric">
+            </div>
+          </div>
+          <p class="hint">σ=3 고정 · 검출면 [−10, 10] · 512칸 · 칸 내 위치는 균등 난수(uniform-in-bin)로 기록됩니다.</p>
+        </fieldset>
+        <div class="actions">
+          <button type="button" id="singleBtn" class="btn btn-secondary">한 번 검출</button>
+          <button type="submit" id="runBtn" class="btn btn-primary gi-pulse">누적 실행</button>
+          <button type="button" id="cancelBtn" class="btn btn-ghost" disabled>취소</button>
+          <button type="button" id="resetBtn" class="btn btn-ghost">초기화</button>
+        </div>
+        <p id="formError" class="error" role="alert"></p>
+        <p id="runStatus" class="status" role="status" aria-live="polite"></p>
+        <div class="progress" id="progressWrap" hidden>
+          <label for="progressBar">계산 진행</label>
+          <progress id="progressBar" max="100" value="0">0%</progress>
+          <span id="progressText">0%</span>
+        </div>
+      </form>
+
+      <div class="visual">
+        <p class="folio-strip" id="folioStrip" aria-live="polite">대기 중 — 조건을 정하고 누적 실행을 누르세요</p>
+        <p class="state-badge" id="runState" data-state="ready" role="status">○ 대기 중 (ready)</p>
+        <div class="plot-block">
+          <h3 id="detectorHeading">검출면 — 검출 사건(점)</h3>
+          <canvas id="detectorCanvas" width="640" height="140" role="img" aria-label="검출면에 쌓인 검출 사건 점들. 궤적은 표시하지 않음"></canvas>
+          <p class="hint">점의 출현은 검출 사건입니다. 점의 세로 위치는 겹쳐 보이지 않게 흩뿌린 것으로, 물리량이 아닙니다. 슬릿에서 검출면까지의 실제 궤적을 그리지 않습니다.</p>
+        </div>
+        <div class="plot-block">
+          <h3 id="probHeading">누적 분포 — 히스토그램과 이론 분포</h3>
+          <canvas id="probCanvas" width="640" height="240" role="img" aria-label="검출 위치 히스토그램과 이론 확률분포 곡선"></canvas>
+          <ul class="legend" aria-label="범례">
+            <li><span class="sw sw-theory" aria-hidden="true"></span>이론 분포(선)</li>
+            <li><span class="sw sw-hist" aria-hidden="true"></span>관측 빈도(막대)</li>
+            <li><span class="sw sw-dot" aria-hidden="true"></span>개별 검출(점)</li>
+          </ul>
+          <details class="fallback">
+            <summary>표와 SVG로 보기 (Canvas 대체)</summary>
+            <div id="svgWrap" class="svg-wrap"></div>
+            <div class="table-scroll">
+              <table id="freqTable">
+                <caption>칸별 이론 확률과 관측 빈도 (512칸 중 상위 24칸 표시, 전체는 JSON 내보내기 참조)</caption>
+                <thead><tr><th scope="col">칸</th><th scope="col">중심 x</th><th scope="col">이론 P</th><th scope="col">관측 수</th><th scope="col">관측 빈도</th></tr></thead>
+                <tbody><tr><td colspan="5">아직 실행이 없습니다.</td></tr></tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="compare" class="card" aria-labelledby="compareTitle">
+    <p class="folio">04 · 조건 비교 (7분)</p>
+    <h2 id="compareTitle">같은 시행 수로 두 실행을 비교하세요</h2>
+    <p class="note">간섭항이 있는 경우와 없는 모형, φ=0과 φ=π를 같은 N으로 비교합니다. P0 모형에서는 한 슬릿과 간섭 소실의 모양이 같게 나옵니다 (차이는 통과율이며 P0에서 비교하지 않습니다). 시행 수가 다르면 매번 오차가 줄어든다고 주장하지 않습니다.</p>
+    <div class="compare-actions">
+      <button type="button" id="saveAbtn" class="btn btn-secondary">현재 실행을 A로 저장</button>
+      <button type="button" id="saveBbtn" class="btn btn-secondary">현재 실행을 B로 저장</button>
+      <button type="button" id="compareClear" class="btn btn-ghost">A·B 지우기</button>
+    </div>
+    <div class="compare-grid">
+      <article class="run-card" aria-labelledby="runATitle">
+        <h3 id="runATitle">실행 A</h3>
+        <p id="runADesc" class="run-desc">비어 있음</p>
+      </article>
+      <article class="run-card" aria-labelledby="runBTitle">
+        <h3 id="runBTitle">실행 B</h3>
+        <p id="runBDesc" class="run-desc">비어 있음</p>
+      </article>
+    </div>
+    <div class="table-scroll">
+      <table id="compareTable">
+        <caption>조건 비교표 — 조건·seed·N을 항상 함께 표시</caption>
+        <thead><tr><th scope="col">항목</th><th scope="col">A</th><th scope="col">B</th></tr></thead>
+        <tbody><tr><td colspan="3">A와 B를 저장하면 비교표가 채워집니다.</td></tr></tbody>
+      </table>
+    </div>
+    <p id="compareWarn" class="status" role="status"></p>
+  </section>
+
+  <section id="record" class="card" aria-labelledby="recordTitle">
+    <p class="folio">05 · 기록 (5분) — 단일 점과 전체 분포의 차이를 설명</p>
+    <h2 id="recordTitle">관찰과 한계를 기록하세요</h2>
+    <form id="recordForm">
+      <div class="field">
+          <label for="obsInput">관찰한 내용 (조건·결과·해석 구분)</label>
+        <textarea id="obsInput" rows="3" maxlength="600" placeholder="예: φ=0, N=1000에서 가운데가 높았다. 개별 점 위치는 예측 불가, 분포 모양은 재현됨"></textarea>
+      </div>
+      <div class="field">
+        <label for="limitInput">모형의 한계 (사람 관찰과 물리적 상호작용 구분)</label>
+        <textarea id="limitInput" rows="3" maxlength="600" placeholder="예: 경로 정보 조건은 환경 상호작용의 단순 모형이며 의식의 효과가 아니다"></textarea>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">기록 저장</button>
+        <button type="button" id="exportBtn" class="btn btn-secondary">JSON 내보내기</button>
+        <button type="button" id="clearRecords" class="btn btn-ghost">기록 지우기</button>
+      </div>
+      <p id="recordStatus" class="status" role="status"></p>
+    </form>
+    <div class="table-scroll">
+      <table id="recordTable">
+        <caption>저장된 실험 기록 (개인 식별 정보 없이 실험 기록만 저장)</caption>
+        <thead><tr><th scope="col">저장 시각</th><th scope="col">조건</th><th scope="col">seed·N</th><th scope="col">관찰</th></tr></thead>
+        <tbody><tr><td colspan="4">저장된 기록이 없습니다.</td></tr></tbody>
+      </table>
+    </div>
+    <p class="hint">저장이 불가하면 현재 세션 목록과 JSON 내보내기를 사용하세요. 전이 과제: 한 슬릿을 닫은 경우와 경로 정보가 있는 두 슬릿을 구분해 설명해 보세요.</p>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <p>P0 교육용 모형 · 완전한 슈뢰딩거 수치해석이 아님 · 단위·가정은 P1에서 재검토</p>
+    <button type="button" id="updateLogBtnFooter" class="btn btn-ghost btn-sm">업데이트 내역</button>
+  </div>
+</footer>
+
+<dialog id="updateDialog" aria-labelledby="updateDialogTitle">
+  <h2 id="updateDialogTitle">업데이트 내역</h2>
+  <div id="updateDialogBody">
+    <p><strong>최초 개발일:</strong> 2026-09-23 — P0 정적 웹앱 최초 구현 (예측·장치·누적·비교·기록, seed 재현 샘플러).</p>
+    <p><strong>개선일:</strong> 2026-09-23 — Canvas/SVG/표 대체, 키보드·reduced-motion·320px 대응 포함.</p>
+    <p>실제 변경이 있을 때만 날짜와 간단한 설명을 덧붙입니다.</p>
+  </div>
+  <form method="dialog"><button class="btn btn-secondary" value="close">닫기</button></form>
+</dialog>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "quantum-experiment-lab",
+  "version": "0.1.0",
+  "description": "양자 실험 설계실 P0 — 개별 검출 사건과 누적 확률분포 (정적 웹앱, 의존성 없음)",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/engine.test.mjs",
+    "check": "node --check app.js && node --check engine/amplitudes.js && node --check engine/distribution.js && node --check engine/sampler.js && node --check engine/experiments.js && node --check tests/engine.test.mjs",
+    "serve": "python3 -m http.server 8137"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
