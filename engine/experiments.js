@@ -6,7 +6,7 @@ export const SCHEMA = {
 };
 
 export function describeParams(p) {
-  const modeKo = p.mode === "interference" ? "간섭 유지" : p.mode === "no-interference" ? "간섭 소실" : "한 슬릿";
+  const modeKo = p.mode === "interference" ? "간섭 유지" : p.mode === "no-interference" ? "간섭 소실" : p.mode === "partial" ? `부분 간섭(γ=${p.gamma ?? "–"})` : "한 슬릿";
   return `${modeKo} · κ=${Number(p.kappa).toFixed(1)} · φ=${Number(p.phase).toFixed(2)}`;
 }
 

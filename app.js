@@ -2,6 +2,7 @@ import { MODEL, rawWeights } from "./engine/amplitudes.js";
 import { normalize, validateDistribution, distributionStats } from "./engine/distribution.js";
 import { mulberry32, sampleChunk } from "./engine/sampler.js";
 import { SCHEMA, describeParams, maeEmpirical } from "./engine/experiments.js";
+import { FRAUNHOFER, fraunhoferWeights } from "./engine/fraunhofer.js";
 
 // ---------- 상태 ----------
 const $ = (id) => document.getElementById(id);
@@ -15,10 +16,16 @@ kappaNum.addEventListener("input", () => { kappaRange.value = kappaNum.value; sy
 kappaRange.addEventListener("input", () => { kappaNum.value = kappaRange.value; syncMissionCond(); });
 phaseNum.addEventListener("input", () => { phaseRange.value = phaseNum.value; });
 phaseRange.addEventListener("input", () => { phaseNum.value = phaseRange.value; });
-$("modeSel").addEventListener("change", syncMissionCond);
+$("modeSel").addEventListener("change", () => { syncGammaField(); syncMissionCond(); });
+const gammaNum = $("gammaNum"), gammaRange = $("gammaRange");
+gammaNum.addEventListener("input", () => { gammaRange.value = gammaNum.value; });
+gammaRange.addEventListener("input", () => { gammaNum.value = gammaRange.value; });
+function syncGammaField() { $("gammaField").hidden = $("modeSel").value !== "partial"; }
+syncGammaField();
 
 function syncMissionCond() {
-  const m = $("modeSel").value === "interference" ? "간섭 유지" : $("modeSel").value === "no-interference" ? "간섭 소실" : "한 슬릿";
+  const mv = $("modeSel").value;
+  const m = mv === "interference" ? "간섭 유지" : mv === "no-interference" ? "간섭 소실" : mv === "partial" ? `부분 간섭(γ=${gammaNum.value})` : "한 슬릿";
   $("missionCond").textContent = `${m} · κ=${Number(kappaNum.value || 0).toFixed(1)} · φ=${Number(phaseNum.value || 0).toFixed(2)}`;
 }
 syncMissionCond();
@@ -49,6 +56,7 @@ function readParams(nOverride) {
   const mode = $("modeSel").value;
   const kappa = Number(kappaNum.value);
   let phase = Number(phaseNum.value);
+  const gamma = Number(gammaNum.value);
   const seed = Number($("seedNum").value);
   const n = nOverride ?? Number($("nSel").value);
   const err = $("formError");
@@ -57,9 +65,10 @@ function readParams(nOverride) {
   // π 근사 입력(예: 3.1416)은 ±0.001 허용 후 ±π로 보정하고, 그 밖은 오류로 안내한다.
   if (!Number.isFinite(phase) || phase < -Math.PI - 0.001 || phase > Math.PI + 0.001) { err.textContent = "⚠ φ는 −π(−3.1416) 이상 π(3.1416) 이하의 숫자여야 합니다."; phaseNum.focus(); return null; }
   phase = Math.max(-Math.PI, Math.min(Math.PI, phase));
+  if (mode === "partial" && (!Number.isFinite(gamma) || gamma < 0 || gamma > 1)) { err.textContent = "⚠ γ는 0 이상 1 이하의 숫자여야 합니다."; gammaNum.focus(); return null; }
   if (!Number.isInteger(seed) || seed < 1 || seed > 99999999) { err.textContent = "⚠ seed는 1–99999999의 정수여야 합니다."; $("seedNum").focus(); return null; }
   if (![1, 100, 1000, 10000].includes(n)) { err.textContent = "⚠ N은 1, 100, 1000, 10000 중 하나여야 합니다."; return null; }
-  return { mode, kappa, phase, seed, n };
+  return { mode, kappa, phase, seed, n, gamma: mode === "partial" ? gamma : undefined };
 }
 
 // ---------- 실행 ----------
@@ -90,7 +99,7 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-async function executeRun({ mode, kappa, phase, seed, n }) {
+async function executeRun({ mode, kappa, phase, seed, n, gamma }) {
   state.cancelled = false;
   $("cancelBtn").disabled = false;
   $("runBtn").disabled = true; $("singleBtn").disabled = true;
@@ -98,13 +107,14 @@ async function executeRun({ mode, kappa, phase, seed, n }) {
   const status = $("runStatus");
   setState("sampling", "◉ 계산 중 (sampling)");
   try {
-    const { xs, raw } = rawWeights({ mode, kappa, phase });
+    const { xs, raw } = rawWeights({ mode, kappa, phase, gamma: gamma ?? 1 });
     const { probabilities, cumulative } = normalize(raw);
     if (!validateDistribution(probabilities, cumulative)) throw new Error("분포 검증에 실패했습니다.");
     const stats = distributionStats(xs, probabilities);
-    status.textContent = `계산 중… ${describeParams({ mode, kappa, phase })} · seed=${seed} · N=${n}`;
-    $("folioStrip").textContent = `${describeParams({ mode, kappa, phase })} · seed=${seed} · N=${n} · 계산 중`;
+    status.textContent = `계산 중… ${describeParams({ mode, kappa, phase, gamma })} · seed=${seed} · N=${n}`;
+    $("folioStrip").textContent = `${describeParams({ mode, kappa, phase, gamma })} · seed=${seed} · N=${n} · 계산 중`;
     showProgress(0, n);
+    const tStart = performance.now();
     const rng = mulberry32(seed);
     const counts = new Uint32Array(MODEL.bins);
     const samples = new Float64Array(n);
@@ -129,7 +139,7 @@ async function executeRun({ mode, kappa, phase, seed, n }) {
       id: `run-${Date.now()}-${++runSeq}`,
       ...SCHEMA, modelVersion: MODEL.modelVersion, engineVersion: MODEL.engineVersion, scenarioVersion: MODEL.scenarioVersion,
       createdAt: new Date().toISOString(),
-      parameters: { sigma: MODEL.sigma, kappa, phase, mode, detectorRange: [MODEL.xMin, MODEL.xMax], bins: MODEL.bins },
+      parameters: { sigma: MODEL.sigma, kappa, phase, mode, gamma: mode === "partial" ? gamma : undefined, detectorRange: [MODEL.xMin, MODEL.xMax], bins: MODEL.bins },
       seed, N: n, counts: Array.from(counts), samples: Array.from(samples),
       theory: { maxX: stats.maxX, maxP: stats.maxP, centerP: stats.centerP },
       mae,
@@ -138,7 +148,8 @@ async function executeRun({ mode, kappa, phase, seed, n }) {
     state.current = { ...run, xs: Array.from(xs), probabilities: Array.from(probabilities) };
     renderRun(state.current);
     setState("completed", "● 완료 (completed) — 조건 비교나 기록으로 이동하세요");
-    status.textContent = `완료 — ${describeParams({ mode, kappa, phase })} · seed=${seed} · N=${n} · 중심 이론 P=${fmtProb(stats.centerP)} · 평균오차(MAE)=${fmtProb(mae)}`;
+    const calcMs = Math.round(performance.now() - tStart);
+    status.textContent = `완료 — ${describeParams({ mode, kappa, phase, gamma })} · seed=${seed} · N=${n} · 중심 이론 P=${fmtProb(stats.centerP)} · 평균오차(MAE)=${fmtProb(mae)} · 계산 ${calcMs}ms`;
   } catch (e) {
     $("formError").textContent = e instanceof Error ? e.message : "실행 중 오류가 발생했습니다.";
   } finally {
@@ -275,6 +286,7 @@ function paintCompare() {
     ["모드", modeKo(A.parameters.mode), modeKo(B.parameters.mode)],
     ["κ", A.parameters.kappa, B.parameters.kappa],
     ["φ", Number(A.parameters.phase).toFixed(3), Number(B.parameters.phase).toFixed(3)],
+    ["γ", A.parameters.gamma ?? "–", B.parameters.gamma ?? "–"],
     ["seed", A.seed, B.seed],
     ["N", A.N, B.N],
     ["중심 이론 P", fmtProb(A.theory.centerP), fmtProb(B.theory.centerP)],
@@ -286,7 +298,7 @@ function paintCompare() {
     ? `⚠ N이 다릅니다(A=${A.N}, B=${B.N}). 같은 시행 수로 다시 실행해 비교하세요.`
     : "같은 N 조건입니다. φ를 바꿨을 때 간섭 소실 모드는 분포가 그대로인지 확인하세요.";
 }
-function modeKo(m) { return m === "interference" ? "간섭 유지" : m === "no-interference" ? "간섭 소실" : "한 슬릿"; }
+function modeKo(m) { return m === "interference" ? "간섭 유지" : m === "no-interference" ? "간섭 소실" : m === "partial" ? "부분 간섭" : "한 슬릿"; }
 
 // ---------- 기록 ----------
 const LS_KEY = "quantum-experiment-lab:v1";
@@ -329,3 +341,48 @@ paintRecords();
 const dlg = $("updateDialog");
 for (const id of ["updateLogBtnHeader", "updateLogBtnFooter"]) $(id).addEventListener("click", () => dlg.showModal());
 $("startBtn").addEventListener("click", () => { document.getElementById("mission").scrollIntoView({ behavior: "smooth" }); });
+
+// ---------- P1 · 원거리 근사 오버레이 (근거: docs/P1-NOTES.md §2) ----------
+$("fraunForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const err = $("fraunError");
+  err.textContent = "";
+  try {
+    const p = {
+      lambdaNm: Number($("lambdaNum").value),
+      slitSepMm: Number($("sepNum").value),
+      slitWidthMm: Number($("widthNum").value),
+      distM: Number($("distNum").value),
+    };
+    const { ys, raw, fresnel, reliable } = fraunhoferWeights(p);
+    const { probabilities } = normalize(raw);
+    renderFraun(ys, probabilities);
+    $("fraunStatus").textContent =
+      `근사 표시 — λ=${p.lambdaNm}nm · d=${p.slitSepMm}mm · a=${p.slitWidthMm}mm · L=${p.distM}m · Fresnel 수 ${fresnel.toFixed(4)}` +
+      (reliable ? "" : " · ⚠ 근사 신뢰 낮음 (Fresnel 수 ≥ 0.1)");
+  } catch (e2) {
+    err.textContent = e2 instanceof Error ? `⚠ ${e2.message}` : "⚠ 근사 계산 중 오류가 발생했습니다.";
+  }
+});
+
+function renderFraun(ys, probabilities) {
+  const c = $("fraunCanvas");
+  const ctx = c.getContext("2d");
+  if (!ctx) { $("fraunError").textContent = "⚠ Canvas 2D를 사용할 수 없습니다."; return; }
+  const W = c.width, H = c.height, pad = 30;
+  ctx.clearRect(0, 0, W, H);
+  const maxP = Math.max(...probabilities);
+  const bw = (W - pad * 2) / probabilities.length;
+  ctx.strokeStyle = "#002FA7"; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.beginPath();
+  for (let i = 0; i < probabilities.length; i++) {
+    const px = pad + (i + 0.5) * bw;
+    const py = H - pad - (probabilities[i] / maxP) * (H - pad * 2);
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = "#5B6472"; ctx.font = "11px sans-serif";
+  ctx.fillText("I (정규화, 검출면 y에 조건부)", 8, 14);
+  ctx.fillText("-5", pad - 4, H - 8);
+  ctx.fillText("y (mm)", W - 52, H - 8);
+  ctx.fillText("+5", W - pad - 4, H - 8);
+}

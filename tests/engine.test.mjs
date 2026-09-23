@@ -104,3 +104,51 @@ describe("입력 가드", () => {
     assert.throws(() => normalize(bad));
   });
 });
+
+describe("P1 · 부분 간섭 γ (근거 docs/P1-NOTES.md §1)", () => {
+  const probs = (gamma) => {
+    const { raw } = rawWeights({ mode: "partial", kappa: 2, phase: 0, gamma });
+    return normalize(raw).probabilities;
+  };
+  it("γ=0은 간섭 소실, γ=1은 간섭 유지와 정규화 후 일치", () => {
+    const ni = dist("no-interference", 2, 0).probabilities;
+    const itf = dist("interference", 2, 0).probabilities;
+    const g0 = probs(0), g1 = probs(1);
+    for (let i = 0; i < MODEL.bins; i++) {
+      assert.equal(g0[i], ni[i]);
+      assert.equal(g1[i], itf[i]);
+    }
+  });
+  it("γ 범위 밖이면 중단", () => {
+    assert.throws(() => rawWeights({ mode: "partial", kappa: 2, phase: 0, gamma: -0.1 }));
+    assert.throws(() => rawWeights({ mode: "partial", kappa: 2, phase: 0, gamma: 1.1 }));
+  });
+});
+
+describe("P1 · 원거리 근사 (근거 docs/P1-NOTES.md §2)", () => {
+  it("확률 ≥0·합 1·대칭", async () => {
+    const { fraunhoferWeights } = await import("../engine/fraunhofer.js");
+    const { ys, raw } = fraunhoferWeights({});
+    const { probabilities, cumulative } = normalize(raw);
+    let s = 0;
+    for (const p of probabilities) { assert.ok(p >= 0 && Number.isFinite(p)); s += p; }
+    assert.ok(Math.abs(s - 1) <= 1e-12, `sum-1=${s - 1}`);
+    assert.ok(validateDistribution(probabilities, cumulative));
+    for (let i = 0; i < MODEL.bins; i++) {
+      assert.ok(Math.abs(ys[i] + ys[MODEL.bins - 1 - i]) < 1e-9);
+      assert.ok(Math.abs(probabilities[i] - probabilities[MODEL.bins - 1 - i]) < 1e-12);
+    }
+  });
+  it("기본값 Fresnel 수 ≈ 0.015로 신뢰", async () => {
+    const { fresnelNumber, fraunhoferWeights } = await import("../engine/fraunhofer.js");
+    const f = fresnelNumber({ lambdaNm: 650, slitWidthMm: 0.1, distM: 1 });
+    assert.ok(Math.abs(f - 0.0154) < 0.001, `fresnel=${f}`);
+    assert.equal(fraunhoferWeights({}).reliable, true);
+  });
+  it("입력 가드 (a>d·범위 밖)", async () => {
+    const { fraunhoferWeights } = await import("../engine/fraunhofer.js");
+    assert.throws(() => fraunhoferWeights({ slitWidthMm: 0.6, slitSepMm: 0.5 }));
+    assert.throws(() => fraunhoferWeights({ lambdaNm: 300 }));
+    assert.throws(() => fraunhoferWeights({ distM: 99 }));
+  });
+});

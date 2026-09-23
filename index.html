@@ -33,6 +33,10 @@
       <button type="button" id="startBtn" class="btn btn-primary gi-pulse">실험 시작하기</button>
       <a class="btn btn-ghost" href="#mission">예측부터 보기</a>
     </div>
+    <figure class="hero-figure">
+      <img src="./assets/lab-intro-1.jpg" alt="밝은 실험대 위에 단순한 광원 상자와 검출 판이 놓인 도입 삽화" width="1200" height="896" loading="eager">
+      <figcaption>가상 실험실 도입 삽화 — 개념 맥락용이며 측정값·궤적이 아니다.</figcaption>
+    </figure>
     <dl class="hero-facts">
       <div><dt>모형</dt><dd>1차원 두 경로 진폭 모형(교육용, 슈뢰딩거 수치해석 아님)</dd></div>
       <div><dt>검출면</dt><dd>x ∈ [−10, 10] · 512칸</dd></div>
@@ -52,6 +56,16 @@
           <li><strong>간섭 유지</strong>: 진폭의 합. φ=0이면 가운데 최대, φ=π이면 가운데 최소입니다.</li>
         </ul>
         <p class="note">주의: ‘사람이 쳐다봐서 바뀐다’가 아니라, 환경과의 물리적 상호작용을 단순화한 모형(경로 정보 조건)의 차이입니다.</p>
+        <div class="intro-figures">
+          <figure>
+            <img src="./assets/lab-intro-2.jpg" alt="빛을 가리는 판에 세로 틈 두 개가 난 근경 삽화, 궤적 없음" width="1200" height="896" loading="lazy">
+            <figcaption>슬릿 판 — 틈의 개수만 본다.</figcaption>
+          </figure>
+          <figure>
+            <img src="./assets/lab-intro-3.jpg" alt="검출 판 위에 점 하나가 찍힌 삽화, 무늬·궤적 없음" width="1200" height="896" loading="lazy">
+            <figcaption>개별 검출 사건 — 한 번에 점 하나.</figcaption>
+          </figure>
+        </div>
       </div>
       <form id="predictForm" class="predict-form">
         <fieldset>
@@ -76,7 +90,8 @@
     <h2 id="expTitle">장치 조건을 정하고 검출을 누적하세요</h2>
     <p class="note">조건을 바꾸면 이전 점과 섞지 않고 새 실행으로 분리합니다. 기존 실행의 조건·seed·N은 항상 함께 표시됩니다. 장치 그림은 모식이며 실측 축척이 아닙니다.</p>
     <div class="exp-grid">
-      <form id="controlForm" class="controls" aria-describedby="controlHelp">
+      <!-- novalidate: min/max는 스크린리더 범위 안내용으로 유지하고, 오류 문구는 브라우저 기본 영문이 아닌 한글 JS 검증으로 통일한다 (WCAG 3.3.1) -->
+      <form id="controlForm" class="controls" aria-describedby="controlHelp" novalidate>
         <p id="controlHelp" class="visually-hidden">모든 입력에는 유효 범위와 단위가 표시됩니다. 범위를 벗어나면 실행되지 않고 오류가 안내됩니다.</p>
         <fieldset>
           <legend>슬릿 조건</legend>
@@ -86,8 +101,17 @@
               <option value="interference">간섭 유지 (진폭의 합)</option>
               <option value="no-interference">간섭 소실 (확률의 합)</option>
               <option value="single">한 슬릿 (|ψ1|²)</option>
+              <option value="partial">부분 간섭 (γ, P1)</option>
             </select>
-            <p class="hint">P0는 0/1만 제공합니다. 부분 간섭(γ)은 P1 범위입니다.</p>
+            <p class="hint">부분 간섭(γ)은 P1. γ=0은 간섭 소실, γ=1은 간섭 유지와 같아진다.</p>
+          </div>
+          <div class="field" id="gammaField" hidden>
+            <label for="gammaNum">γ (결어긋남 정도, 0=소실 · 1=유지)</label>
+            <div class="inline-inputs">
+              <input id="gammaNum" type="number" min="0" max="1" step="any" value="0.5" inputmode="decimal" aria-describedby="gammaHint">
+              <input id="gammaRange" type="range" min="0" max="1" step="0.05" value="0.5" aria-label="γ 슬라이더">
+            </div>
+            <p class="hint" id="gammaHint">유효 범위 0–1. 경로 정보가 부분적일 때 무늬가 옅어지는 손잡이이며, 결어긋남의 미시적 기전을 설명하지 않습니다.</p>
           </div>
           <div class="field">
             <label for="kappaNum">κ (상대 공간 진동수, rad/모형길이)</label>
@@ -173,6 +197,11 @@
     <p class="folio">04 · 조건 비교 (7분)</p>
     <h2 id="compareTitle">같은 시행 수로 두 실행을 비교하세요</h2>
     <p class="note">간섭항이 있는 경우와 없는 모형, φ=0과 φ=π를 같은 N으로 비교합니다. P0 모형에서는 한 슬릿과 간섭 소실의 모양이 같게 나옵니다 (차이는 통과율이며 P0에서 비교하지 않습니다). 시행 수가 다르면 매번 오차가 줄어든다고 주장하지 않습니다.</p>
+    <ul class="cond-cards" aria-label="조건 카드 (개념 맥락용 삽화)">
+      <li><figure><img src="./assets/card-1.jpg" alt="한 개의 틈이 난 슬릿 판 카드 삽화" width="1200" height="896" loading="lazy"><figcaption>한 슬릿 조건</figcaption></figure></li>
+      <li><figure><img src="./assets/card-2.jpg" alt="두 개의 틈이 난 슬릿 판 카드 삽화" width="1200" height="896" loading="lazy"><figcaption>두 슬릿 조건</figcaption></figure></li>
+      <li><figure><img src="./assets/card-3.jpg" alt="검출 장치 옆에 조정 손잡이가 달린 카드 삽화" width="1200" height="896" loading="lazy"><figcaption>위상·조건 조정</figcaption></figure></li>
+    </ul>
     <div class="compare-actions">
       <button type="button" id="saveAbtn" class="btn btn-secondary">현재 실행을 A로 저장</button>
       <button type="button" id="saveBbtn" class="btn btn-secondary">현재 실행을 B로 저장</button>
@@ -196,6 +225,39 @@
       </table>
     </div>
     <p id="compareWarn" class="status" role="status"></p>
+    <details class="fallback" id="fraunPanel">
+      <summary>P1 · 원거리 근사(Fraunhofer) 보기 — 실제 단위, 별도 그래프</summary>
+      <p class="note">표준 이중슬릿 원거리식 cos²(πd·y/λL)·sinc²(πa·y/λL)만 쓴다. x축은 실제 검출면 y(mm)이며 <strong>모형 x와 물리적 스케일이 다르므로 겹쳐 그리지 않는다.</strong> 정규화는 각자 검출면에서 하고 통과율은 비교하지 않는다. 근거: <span>docs/P1-NOTES.md §2</span>.</p>
+      <form id="fraunForm" novalidate>
+        <div class="field-row">
+          <div class="field">
+            <label for="lambdaNum">파장 λ (nm)</label>
+            <input id="lambdaNum" type="number" min="380" max="780" step="any" value="650" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label for="sepNum">슬릿 간격 d (mm)</label>
+            <input id="sepNum" type="number" min="0.05" max="2" step="any" value="0.5" inputmode="decimal">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="widthNum">슬릿 폭 a (mm, 간격 이하)</label>
+            <input id="widthNum" type="number" min="0.01" max="2" step="any" value="0.1" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label for="distNum">거리 L (m)</label>
+            <input id="distNum" type="number" min="0.2" max="5" step="any" value="1" inputmode="decimal">
+          </div>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn btn-secondary">근사 곡선 표시</button>
+        </div>
+        <p id="fraunError" class="error" role="alert"></p>
+        <p id="fraunStatus" class="status" role="status"></p>
+      </form>
+      <canvas id="fraunCanvas" width="640" height="200" role="img" aria-label="원거리 근사 강도 분포 (검출면 y, mm)"></canvas>
+      <p class="hint">유한폭 효과는 sinc 포락선으로 들어 있다. Fresnel 수 a²/(λL)가 0.1 이상이면 "근사 신뢰 낮음"을 표시한다.</p>
+    </details>
   </section>
 
   <section id="record" class="card" aria-labelledby="recordTitle">

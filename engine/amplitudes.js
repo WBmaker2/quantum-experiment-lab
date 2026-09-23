@@ -24,13 +24,17 @@ function gauss(x, sigma) {
 }
 
 //psi1 = g*exp(i*kx/2), psi2 = g*exp(-i*kx/2 + i*phi)
-export function rawWeights({ mode, kappa, phase, sigma = MODEL.sigma, bins = MODEL.bins }) {
+//P1 부분 간섭: rawP = 2g^2 (1 + γ cos(kx - phi)). 근거: docs/P1-NOTES.md §1.
+export function rawWeights({ mode, kappa, phase, sigma = MODEL.sigma, bins = MODEL.bins, gamma = 1 }) {
   if (!Number.isFinite(kappa) || !Number.isFinite(phase) || !Number.isFinite(sigma)) {
     throw new Error("kappa/phase/sigma는 유한한 수여야 합니다.");
   }
   if (kappa < MODEL.kappaMin || kappa > MODEL.kappaMax) throw new Error("κ 범위를 벗어났습니다 (0.5–4).");
   if (phase < -Math.PI || phase > Math.PI) throw new Error("φ 범위를 벗어났습니다 (−π–π).");
-  if (!["interference", "no-interference", "single"].includes(mode)) throw new Error("알 수 없는 모드입니다.");
+  if (!["interference", "no-interference", "single", "partial"].includes(mode)) throw new Error("알 수 없는 모드입니다.");
+  if (mode === "partial") {
+    if (!Number.isFinite(gamma) || gamma < 0 || gamma > 1) throw new Error("γ는 0 이상 1 이하이어야 합니다.");
+  }
   const xs = binCenters(bins);
   const raw = new Float64Array(bins);
   for (let i = 0; i < bins; i++) {
@@ -41,6 +45,8 @@ export function rawWeights({ mode, kappa, phase, sigma = MODEL.sigma, bins = MOD
       raw[i] = g2; // |psi1|^2
     } else if (mode === "no-interference") {
       raw[i] = 2 * g2; // |psi1|^2 + |psi2|^2
+    } else if (mode === "partial") {
+      raw[i] = 2 * g2 * (1 + gamma * Math.cos(kappa * x - phase));
     } else {
       // |psi1+psi2|^2 = 2g^2 (1 + cos(kx - phi))
       raw[i] = 2 * g2 * (1 + Math.cos(kappa * x - phase));
