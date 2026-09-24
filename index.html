@@ -182,7 +182,7 @@
         <div class="plot-block">
           <h3 id="probHeading">누적 분포 — 히스토그램과 이론 분포</h3>
           <p class="hint">가로축(x)은 모형 검출 위치(모형길이 단위, −10~10)입니다. 세로축(y)은 각 검출 칸의 정규화된 확률이며, 전체 512칸의 확률 합은 1입니다.</p>
-          <canvas id="probCanvas" width="640" height="260" role="img" aria-label="가로축은 모형 검출 위치 −10에서 10, 세로축은 각 칸의 정규화된 검출 확률이며 이론 분포 곡선과 관측 빈도를 비교합니다"></canvas>
+          <canvas id="probCanvas" width="640" height="280" role="img" aria-label="가로축은 모형 검출 위치 −10에서 10, 세로축은 각 칸의 정규화된 검출 확률이며 이론 분포 곡선과 관측 빈도를 비교합니다"></canvas>
           <ul class="legend" aria-label="범례">
             <li><span class="sw sw-theory" aria-hidden="true"></span>이론 분포(선)</li>
             <li><span class="sw sw-hist" aria-hidden="true"></span>관측 빈도(막대)</li>
@@ -316,6 +316,7 @@
     <p><strong>최초 개발일:</strong> 2026-09-23 — 기본 모형 최초 구현 (예측·장치·누적·비교·기록, seed 재현 샘플러).</p>
     <p><strong>개선일:</strong> 2026-09-23 — Canvas/SVG/표 대체, 키보드·reduced-motion·320px 대응 포함.</p>
     <p><strong>개선일:</strong> 2026-09-23 — 예측을 먼저 보여주고 단계 이동·그래프 축·결과 비교·쉬운 용어 안내를 개선했습니다.</p>
+    <p><strong>개선일:</strong> 2026-09-24 — 모바일 그래프에서 x축 눈금과 축 제목이 겹치지 않도록 아래쪽 공간을 조정했습니다.</p>
     <p>실제 변경이 있을 때만 날짜와 간단한 설명을 덧붙입니다.</p>
   </div>
   <form method="dialog"><button class="btn btn-secondary" value="close">닫기</button></form>

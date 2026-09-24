@@ -221,7 +221,7 @@ function renderProb(run) {
   const c = $("probCanvas");
   const ctx = c.getContext("2d");
   if (!ctx) return;
-  const W = c.width, H = c.height, right = 16, top = 32, bottom = 42;
+  const W = c.width, H = c.height, right = 16, top = 32, bottom = 62;
   const cssWidth = c.getBoundingClientRect().width || W;
   const fontSize = 11 * (W / cssWidth);
   ctx.clearRect(0, 0, W, H);
