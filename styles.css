@@ -21,6 +21,7 @@
   --plot-h:240px;
   --strip-h:140px;
   --focus:#002FA7;
+  --anchor-offset:112px;
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -37,18 +38,20 @@ body{
 .skip-link{position:absolute;left:12px;top:-48px;background:var(--ink);color:#fff;padding:10px 14px;border-radius:8px;z-index:50;text-decoration:none}
 .skip-link:focus{top:12px;outline:3px solid var(--focus);outline-offset:2px}
 .site-header{border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:20}
-.header-inner{max-width:var(--content-max);margin:0 auto;padding:10px var(--inset);display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.header-inner{max-width:var(--content-max);margin:0 auto;padding:8px var(--inset);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .brand{margin:0;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px}
 .brand-mark{width:12px;height:12px;background:var(--accent);display:inline-block}
 .brand-sub{font-weight:400;color:var(--muted);font-size:13px}
-.step-nav ul,.step-nav{margin:0;padding:0}
-.step-nav ul{display:flex;gap:4px;list-style:none;flex-wrap:wrap}
-.step-nav a{display:inline-block;padding:10px 12px;color:var(--ink);text-decoration:none;border-bottom:2px solid transparent;min-height:var(--btn-min-h)}
+.step-nav{display:flex;align-items:center;gap:2px;list-style:none;margin:0 0 0 auto;padding:0;min-width:0}
+.step-nav li{min-width:0}
+.step-nav a{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;color:var(--ink);text-decoration:none;border-bottom:2px solid transparent;min-height:40px;white-space:nowrap}
 .step-nav a:hover{background:var(--panel)}
 .step-nav a:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 .page{max-width:var(--content-max);margin:0 auto;padding:24px var(--inset) 64px;display:grid;gap:var(--section-gap)}
+main section[id]{scroll-margin-top:var(--anchor-offset)}
+h2:focus{outline:3px solid var(--focus);outline-offset:4px;border-radius:2px}
 /* 그리드 자식이 내용 최소폭으로 페이지를 밀어내지 않도록 관계 고정 (320px 검증) */
-.page > *, .card, .two-col > *, .exp-grid > *, .compare-grid > *, .visual, .plot-block, .controls{min-width:0;max-width:100%}
+.page > *, .card, .prediction-layout > *, .exp-grid > *, .compare-grid > *, .visual, .plot-block, .controls{min-width:0;max-width:100%}
 h1,h2,h3,p,li,dd,dt,.folio-strip,.run-desc{overflow-wrap:break-word;word-break:keep-all}
 .card{border:1px solid var(--line);border-radius:var(--radius);padding:20px;background:var(--surface)}
 .hero{border-top:4px solid var(--ink)}
@@ -128,8 +131,13 @@ table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:ta
 caption{text-align:left;font-weight:700;padding:8px}
 th,td{border-top:1px solid var(--line);padding:8px 10px;text-align:left}
 th{background:var(--panel)}
-.two-col{display:grid;grid-template-columns:1.1fr .9fr;gap:20px}
-@media (max-width:899px){.two-col{grid-template-columns:minmax(0,1fr)}}
+.prediction-layout{display:grid;grid-template-columns:minmax(280px,.9fr) minmax(0,1.1fr);gap:20px;align-items:start}
+.prediction-context{min-width:0}
+.prediction-review{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:var(--radius-sm);padding:12px;margin:16px 0;background:var(--surface)}
+.prediction-review h3{margin:0 0 8px}
+.prediction-review p{margin:6px 0}
+.prediction-review[hidden]{display:none}
+@media (max-width:899px){.prediction-layout{grid-template-columns:minmax(0,1fr)}}
 /* 생성 이미지 — 개념 맥락용 삽화. 측정값·그래프는 코드 렌더만 사용 */
 figure{margin:0;min-width:0}
 figure img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--panel)}
@@ -152,7 +160,14 @@ dialog{border:1px solid var(--ink);border-radius:12px;padding:20px;max-width:min
 dialog::backdrop{background:rgba(0,0,0,.4)}
 @media (max-width:420px){
   :root{--inset:12px}
+  :root{--anchor-offset:116px}
   .card{padding:14px}
   .inline-inputs,.field-row{grid-template-columns:minmax(0,1fr)}
   h1{font-size:26px}
+  .header-inner{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;padding-top:6px;padding-bottom:6px}
+  .brand{grid-column:1;grid-row:1;min-width:max-content;font-size:15px;gap:6px;white-space:nowrap}
+  .brand-sub{display:none}
+  .step-nav{grid-column:1 / -1;grid-row:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:0;width:100%}
+  .step-nav a{width:100%;padding:4px 2px;min-height:36px;font-size:13px}
+  #updateLogBtnHeader{grid-column:2;grid-row:1;justify-self:end;min-height:36px;width:max-content;padding:4px 8px;font-size:12px;white-space:nowrap}
 }

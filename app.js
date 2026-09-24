@@ -36,9 +36,19 @@ $("predictForm").addEventListener("submit", (e) => {
   const fd = new FormData(e.target);
   state.prediction = { choice: fd.get("prediction"), reason: $("predictReason").value.trim() };
   $("predictSaved").textContent = `예측 저장됨: ${choiceKo(state.prediction.choice)} — 다음 단계에서 실행해 비교하세요.`;
+  $("predictionExplanation").hidden = false;
+  $("savePredictionBtn").classList.remove("gi-pulse");
+  $("runBtn").classList.add("gi-pulse");
+  if (state.current) showPredictionReview();
 });
 function choiceKo(c) {
   return { "center-max": "가운데가 높은 간섭무늬", "center-min": "가운데가 낮은 간섭무늬", "two-bumps": "두 봉우리의 합", unsure: "잘 모르겠다" }[c] || c;
+}
+
+function showPredictionReview() {
+  if (!state.prediction || !state.current) return;
+  $("predictionReviewChoice").textContent = choiceKo(state.prediction.choice);
+  $("predictionReview").hidden = false;
 }
 
 // 실행 상태 뱃지: ready → sampling → paused/completed (설계 §4 상태 분리 표시)
@@ -147,6 +157,7 @@ async function executeRun({ mode, kappa, phase, seed, n, gamma }) {
     // 이론 전체는 재계산 가능하므로 레코드에는 요약만 저장, 렌더용 전체는 메모리에 유지
     state.current = { ...run, xs: Array.from(xs), probabilities: Array.from(probabilities) };
     renderRun(state.current);
+    showPredictionReview();
     setState("completed", "● 완료 (completed) — 조건 비교나 기록으로 이동하세요");
     const calcMs = Math.round(performance.now() - tStart);
     status.textContent = `완료 — ${describeParams({ mode, kappa, phase, gamma })} · seed=${seed} · N=${n} · 중심 이론 P=${fmtProb(stats.centerP)} · 평균오차(MAE)=${fmtProb(mae)} · 계산 ${calcMs}ms`;
@@ -210,29 +221,64 @@ function renderProb(run) {
   const c = $("probCanvas");
   const ctx = c.getContext("2d");
   if (!ctx) return;
-  const W = c.width, H = c.height, pad = 28;
+  const W = c.width, H = c.height, right = 16, top = 32, bottom = 42;
+  const cssWidth = c.getBoundingClientRect().width || W;
+  const fontSize = 11 * (W / cssWidth);
   ctx.clearRect(0, 0, W, H);
-  const maxP = Math.max(...run.probabilities);
-  const yOf = (p) => H - pad - (p / maxP) * (H - pad * 2);
-  // 히스토그램 (관측 빈도, 이론과 같은 단위)
-  const bw = (W - pad * 2) / MODEL.bins;
+  const observed = run.counts.map((count) => count / run.N);
+  const maxP = chartCeiling(Math.max(...run.probabilities, ...observed));
+  const yStep = maxP / 4;
+  const decimals = Math.max(0, Math.min(6, 1 - Math.floor(Math.log10(yStep))));
+  ctx.font = `${fontSize}px sans-serif`;
+  const widestTick = Math.max(...[0, 1, 2, 3, 4].map((tick) => ctx.measureText((yStep * tick).toFixed(decimals)).width));
+  const left = Math.max(62, Math.ceil(widestTick) + 20);
+  const plotW = W - left - right, plotH = H - top - bottom;
+  const yOf = (p) => H - bottom - (p / maxP) * plotH;
+  const xOf = (x) => left + ((x - MODEL.xMin) / (MODEL.xMax - MODEL.xMin)) * plotW;
+  const bw = plotW / MODEL.bins;
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  ctx.strokeStyle = "#E2E4E9"; ctx.lineWidth = 1;
+  for (let tick = 0; tick <= 4; tick++) {
+    const value = yStep * tick, py = yOf(value);
+    ctx.beginPath(); ctx.moveTo(left, py); ctx.lineTo(W - right, py); ctx.stroke();
+    ctx.fillStyle = "#5B6472";
+    ctx.fillText(value.toFixed(decimals), left - 7, py);
+  }
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  for (const tick of [-10, -5, 0, 5, 10]) {
+    const px = xOf(tick);
+    ctx.strokeStyle = "#5B6472";
+    ctx.beginPath(); ctx.moveTo(px, H - bottom); ctx.lineTo(px, H - bottom + 4); ctx.stroke();
+    ctx.fillStyle = "#5B6472";
+    ctx.fillText(String(tick), px, H - bottom + 17);
+  }
+  // 히스토그램과 이론 곡선은 모두 각 칸의 정규화 확률 단위로 표시한다.
   ctx.fillStyle = "#C9D2F5"; ctx.strokeStyle = "#002FA7"; ctx.lineWidth = 1;
   for (let i = 0; i < MODEL.bins; i++) {
-    const f = run.counts[i] / run.N;
+    const f = observed[i];
     if (f <= 0) continue;
-    const h = (f / maxP) * (H - pad * 2);
-    ctx.fillRect(pad + i * bw, H - pad - h, Math.max(1, bw), h);
+    const h = (f / maxP) * plotH;
+    ctx.fillRect(left + i * bw, H - bottom - h, Math.max(1, bw), h);
   }
   // 이론 곡선
   ctx.strokeStyle = "#002FA7"; ctx.lineWidth = 2; ctx.beginPath();
   for (let i = 0; i < MODEL.bins; i++) {
-    const px = pad + (i + 0.5) * bw, py = yOf(run.probabilities[i]);
+    const px = left + (i + 0.5) * bw, py = yOf(run.probabilities[i]);
     if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
   }
   ctx.stroke();
-  ctx.fillStyle = "#5B6472"; ctx.font = "11px sans-serif";
-  ctx.fillText("P (검출된 사건의 위치 분포에 조건부)", 8, 14);
-  ctx.fillText("x", W - 18, H - 8);
+  ctx.fillStyle = "#5B6472"; ctx.font = `${fontSize}px sans-serif`;
+  ctx.textAlign = "right";
+  ctx.fillText("x (모형길이)", W - right, H - 6);
+}
+
+function chartCeiling(value) {
+  if (!Number.isFinite(value) || value <= 0) return 1;
+  const magnitude = 10 ** Math.floor(Math.log10(value));
+  const scaled = value / magnitude;
+  const step = scaled <= 1 ? 1 : scaled <= 2 ? 2 : scaled <= 2.5 ? 2.5 : scaled <= 5 ? 5 : 10;
+  return step * magnitude;
 }
 
 function renderSvgFallback(run) {
@@ -340,7 +386,25 @@ paintRecords();
 // ---------- 업데이트 내역 + 시작 ----------
 const dlg = $("updateDialog");
 for (const id of ["updateLogBtnHeader", "updateLogBtnFooter"]) $(id).addEventListener("click", () => dlg.showModal());
-$("startBtn").addEventListener("click", () => { document.getElementById("mission").scrollIntoView({ behavior: "smooth" }); });
+function moveToSection(id) {
+  const section = $(id);
+  const heading = section?.querySelector("h2");
+  if (!section || !heading) return;
+  section.scrollIntoView({ block: "start" });
+  heading.focus({ preventScroll: true });
+}
+$("startBtn").addEventListener("click", () => {
+  $("startBtn").classList.remove("gi-pulse");
+  $("savePredictionBtn").classList.add("gi-pulse");
+  moveToSection("mission");
+});
+document.querySelector(".step-nav").addEventListener("click", (event) => {
+  const link = event.target.closest("a[href^='#']");
+  if (!link) return;
+  event.preventDefault();
+  moveToSection(link.hash.slice(1));
+  history.replaceState(null, "", link.hash);
+});
 
 // ---------- P1 · 원거리 근사 오버레이 (근거: docs/P1-NOTES.md §2) ----------
 $("fraunForm").addEventListener("submit", (e) => {
